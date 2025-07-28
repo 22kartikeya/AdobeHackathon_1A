@@ -1,6 +1,6 @@
 # PDF Outline Extraction Solution
 
-[![Docker](https://img.shields.io/badge/Docker-Compatible//img.docs.docker.com/desktop/multiDF document analysis tool that extracts titles and hierarchical outlines from PDF documents using advanced text analysis and machine learning techniques. Built for the **Adobe Hackathon Round 1A** challenge.
+Document analysis tool that extracts titles and hierarchical outlines from PDF documents using advanced text analysis and machine learning techniques. Built for the **Adobe Hackathon Round 1A** challenge.
 
 ## Overview
 
@@ -50,9 +50,9 @@ docker build --platform linux/amd64 -t mysolutionname:somerandomidentifier .
 
 2. **Prepare your input**:
 ```bash
-mkdir -p input output
-# Place your PDF files in the input/ directory
-cp your_document.pdf input/
+mkdir -p app/input app/output
+# Place your PDF files in the app/input/ directory (note the app/ prefix)
+cp your_document.pdf app/input/
 ```
 
 3. **Run the extraction**:
@@ -66,7 +66,7 @@ docker run --rm \
 
 4. **View results**:
 ```bash
-ls output/
+ls app/output/
 ```
 
 ## Output Format
@@ -233,14 +233,15 @@ For development without Docker:
 pip install -r requirements.txt
 
 # Create test environment
-mkdir -p test_input test_output
-cp sample.pdf test_input/
+mkdir -p app/test_input app/test_output
+cp sample.pdf app/test_input/
 
 # Run locally (auto-detects environment)
 python process_pdfs.py
 
 # Check results
-cat test_output/sample.json
+cat app/test_output/sample.json
+
 ```
 
 The application automatically detects Docker vs local environment and adjusts paths accordingly.
