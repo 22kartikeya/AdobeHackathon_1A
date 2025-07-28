@@ -1,3 +1,4 @@
-PyMuPDF==1.22.5
+numpy==1.26.4
+PyMuPDF==1.23.14
 pdfplumber==0.10.3
-shapely==2.0.1
+shapely==2.0.2

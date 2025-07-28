@@ -1,19 +1,26 @@
-FROM --platform=linux/amd64 python:3.10-slim
+# Explicitly specify AMD64 platform for cross-platform compatibility
+FROM --platform=linux/amd64 python:3.10
 
+# Set working directory
 WORKDIR /app
-# Install OS-level dependencies
+
+# Install system dependencies for PyMuPDF and pdfplumber
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpoppler-cpp-dev \
-    python3-dev \
-    poppler-utils \
+    gcc \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install
+# Create input and output directories
+RUN mkdir -p /app/input /app/output
+
+# Copy requirements first (for better Docker layer caching)
 COPY requirements.txt .
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
-COPY app/ ./app/
+# Copy your application code
+COPY process_pdfs.py .
 
-ENTRYPOINT ["python3", "app/main.py"]
+# Set the command to run your application
+CMD ["python", "process_pdfs.py"]

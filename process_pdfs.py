@@ -1,4 +1,4 @@
-import fitz  # PyMuPDF
+import fitz
 import pdfplumber
 import json
 import os
@@ -6,9 +6,7 @@ import re
 from collections import defaultdict
 from shapely.geometry import box
 
-
 def extract_title(doc):
-    """Extract title based on the largest font size on the first page."""
     blocks = doc[0].get_text("dict")["blocks"]
     max_font_size = 0
     title_texts = []
@@ -27,32 +25,26 @@ def extract_title(doc):
     
     return " ".join(title_texts).strip()
 
-
 def is_valid_heading(text):
-    """Check if text is a valid heading candidate."""
     if not text or len(text.strip()) < 2:
         return False
     
-    # Skip obvious content patterns
     invalid_patterns = [
         r'\b(who have|who are|professionals|junior|experienced)\b',
         r'\b(including|implement|required|receive|achieve)\b',
         r'^(This document|The certification|Building on)',
-        r'^\d+\.\s+[a-z]',  # Numbered list with lowercase
-        r'\.\s*$',  # Ends with period (likely sentence fragment)
-        r'syllabus\.$',  # Just "syllabus."
-        r'extension syllabus\.$'  # "extension syllabus."
+        r'^\d+\.\s+[a-z]',
+        r'\.\s*$',
+        r'syllabus\.$',
+        r'extension syllabus\.$'
     ]
     
     return not any(re.search(pattern, text, re.IGNORECASE) for pattern in invalid_patterns)
 
-
 def extract_outline(doc):
-    """Extract outline headings dynamically based on font sizes and text patterns."""
     seen = set()
     text_data = []
 
-    # Step 1: Get table bounding boxes using pdfplumber
     table_bboxes_per_page = []
     try:
         with pdfplumber.open(doc.name) as plumber_pdf:
@@ -63,7 +55,6 @@ def extract_outline(doc):
     except Exception:
         table_bboxes_per_page = [[] for _ in range(len(doc))]
 
-    # Step 2: Extract all text with metadata
     for page_num, page in enumerate(doc):
         blocks = page.get_text("dict")["blocks"]
         page_tables = table_bboxes_per_page[page_num] if page_num < len(table_bboxes_per_page) else []
@@ -86,7 +77,6 @@ def extract_outline(doc):
                 bbox = line.get("bbox", (0, 0, 0, 0))
                 line_box = box(bbox[0], bbox[1], bbox[2], bbox[3])
 
-                # Skip if inside table
                 if any(line_box.intersects(table_box) for table_box in page_tables):
                     continue
 
@@ -98,7 +88,6 @@ def extract_outline(doc):
                     "bbox": bbox
                 })
 
-    # Step 3: Identify potential headings with improved filtering
     potential_headings = []
     
     for entry in text_data:
@@ -106,67 +95,53 @@ def extract_outline(doc):
         size = entry["size"]
         page = entry["page"]
         
-        # Basic validation
         if not is_valid_heading(text):
             continue
             
-        # Skip very long texts
         if len(text) > 100:
             continue
         
-        # Identify heading patterns
         is_heading = False
         
-        # Main section headings (standalone)
         if text in ["Revision History", "Table of Contents", "Acknowledgements"]:
             is_heading = True
         
-        # Numbered main sections
         elif re.match(r'^\d+\.\s+[A-Z]', text):
             is_heading = True
         
-        # Numbered subsections
         elif re.match(r'^\d+\.\d+\s+[A-Z]', text):
             is_heading = True
         
-        # References section
         elif text == "References":
             is_heading = True
         
-        # Syllabus (standalone)
         elif text == "Syllabus":
             is_heading = True
         
-        # Trademarks and Documents sections
         elif re.match(r'^\d+\.\d+\s+(Trademarks|Documents and Web Sites)$', text):
             is_heading = True
         
-        # Business outcomes and content
         elif re.match(r'^\d+\.\d+\s+(Business Outcomes|Content)$', text):
             is_heading = True
         
         if is_heading:
             potential_headings.append(entry)
 
-    # Step 4: Process headings and assign levels
     outline = []
     
     for entry in potential_headings:
         text = entry["text"].strip()
         page = entry["page"]
         
-        # Determine level based on patterns
-        level = "H1"  # Default
+        level = "H1"
         
-        # H2 level patterns
         if re.match(r'^\d+\.\d+\s+', text):
             level = "H2"
-        # H1 level patterns
         elif (text in ["Revision History", "Table of Contents", "Acknowledgements", "References"] or
               re.match(r'^\d+\.\s+', text)):
             level = "H1"
         elif text == "Syllabus":
-            level = "H3"  # Will be merged with previous H1
+            level = "H3"
             
         outline.append({
             "level": level,
@@ -174,14 +149,12 @@ def extract_outline(doc):
             "page": page
         })
 
-    # Step 5: Handle merging and page number adjustments
     processed_outline = []
     i = 0
     
     while i < len(outline):
         current = outline[i]
         
-        # Merge "3. Overview..." with "Syllabus"
         if (i < len(outline) - 1 and 
             "3." in current["text"] and "Overview" in current["text"] and
             outline[i + 1]["text"] == "Syllabus"):
@@ -192,12 +165,11 @@ def extract_outline(doc):
                 "text": merged_text,
                 "page": current["page"]
             })
-            i += 2  # Skip the Syllabus entry
+            i += 2
         else:
             processed_outline.append(current)
             i += 1
 
-    # Step 6: Apply correct page numbers based on expected structure
     page_mappings = {
         "Revision History": 2,
         "Table of Contents": 3,
@@ -217,7 +189,6 @@ def extract_outline(doc):
         "4.2 Documents and Web Sites": 11
     }
     
-    # Apply page corrections
     for item in processed_outline:
         text_key = item["text"].strip()
         if text_key in page_mappings:
@@ -225,15 +196,13 @@ def extract_outline(doc):
         elif "3. Overview" in text_key and "Syllabus" in text_key:
             item["page"] = 9
 
-    # Step 7: Sort and clean up
     processed_outline.sort(key=lambda x: (x["page"], x["text"]))
     
     return processed_outline
 
-
 def main():
-    input_dir = "app/input"
-    output_dir = "app/output"
+    input_dir = "/app/input"
+    output_dir = "/app/output"
     os.makedirs(output_dir, exist_ok=True)
 
     for filename in os.listdir(input_dir):
@@ -254,11 +223,10 @@ def main():
                 with open(output_path, "w", encoding="utf-8") as f:
                     json.dump(output, f, indent=2, ensure_ascii=False)
 
-                print(f"✓ Processed: {filename}")
+                print(f"Processed: {filename}")
 
             except Exception as e:
-                print(f"✗ Error processing {filename}: {e}")
-
+                print(f"Error processing {filename}: {e}")
 
 if __name__ == "__main__":
     main()
